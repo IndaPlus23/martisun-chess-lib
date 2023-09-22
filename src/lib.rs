@@ -156,7 +156,7 @@ mod tests {
         //game.init_board();
         game.p();
         
-        let pos = "52"; // file, rank, index from 1
+        let pos = "53"; // file, rank, index from 1
         let moves = game.get_possible_moves(pos);
         if moves.is_none() {
             println!("none");
