@@ -86,9 +86,11 @@ impl Game {
         let f: usize = file as usize - 49;
         let r: usize = rank as usize - 49;
 
+        let pos = (r, f);
+
         let mut moves: Vec<String> = Vec::new();
 
-        let piece = self.board[r][f];
+        let piece = self.board[pos.0][pos.1];
         match piece {
             Some(Piece::Pawn) => {
                 print!("pawn here");
