@@ -1,5 +1,15 @@
 use std::fmt;
 
+
+/* TODO
+- implement get_covered_squares(pos)
+
+
+
+*/
+
+
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum GameState {
     InProgress,
@@ -14,15 +24,8 @@ pub enum Color {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Role {
-    Pawn, Rook
+    Pawn, Rook, Knight, Bishop, Queen, King
 }
-
-
-/* IMPORTANT:
- * - Document well!
- * - Write well structured and clean code!
- * - Read the Rust documentation, ask questions if you get stuck!
- */
 
  #[derive(Copy, Clone, Debug)]
 struct Piece {
@@ -41,7 +44,6 @@ impl Piece {
     }
 }
 
-
 pub struct Game {
     /* save board, active colour, ... */
     state: GameState,
@@ -59,11 +61,31 @@ impl Game {
             white: true,
             board: {
                 let mut b = [[None; 8]; 8];
-                b[1] = [Some(Piece::new(Color::Black, Role::Pawn)); 8];
-                b[6] = [Some(Piece::new(Color::White, Role::Pawn)); 8];
+
+                //b[1] = [Some(Piece::new(Color::Black, Role::Pawn)); 8];
+                //b[6] = [Some(Piece::new(Color::White, Role::Pawn)); 8];
 
                 b[0][0] = Some(Piece::new(Color::Black, Role::Rook));
                 b[0][7] = Some(Piece::new(Color::Black, Role::Rook));
+                b[7][0] = Some(Piece::new(Color::White, Role::Rook));
+                b[7][7] = Some(Piece::new(Color::White, Role::Rook));
+
+                b[0][1] = Some(Piece::new(Color::Black, Role::Knight));
+                b[0][6] = Some(Piece::new(Color::Black, Role::Knight));
+                b[7][1] = Some(Piece::new(Color::White, Role::Knight));
+                b[7][6] = Some(Piece::new(Color::White, Role::Knight));
+
+                b[0][2] = Some(Piece::new(Color::Black, Role::Bishop));
+                b[0][5] = Some(Piece::new(Color::Black, Role::Bishop));
+                b[7][2] = Some(Piece::new(Color::White, Role::Bishop));
+                b[7][5] = Some(Piece::new(Color::White, Role::Bishop));
+
+                b[3][3] = Some(Piece::new(Color::Black, Role::Queen));
+                b[7][3] = Some(Piece::new(Color::White, Role::Queen));
+
+                b[0][4] = Some(Piece::new(Color::Black, Role::King));
+                b[7][4] = Some(Piece::new(Color::White, Role::King));
+
                 b
             }
             //...
@@ -93,68 +115,88 @@ impl Game {
     /// new positions of that piece. Don't forget to the rules for check. 
     /// 
     /// (optional) Implement en passant and castling.
-    pub fn get_possible_moves(&self, _position: &str) -> Option<Vec<(usize, usize)>> {
-        let file = _position.chars().next().unwrap();
-        let rank = _position.chars().nth(1).unwrap();
-        let f: usize = file as usize - 49;
-        let r: usize = rank as usize - 49;
+    pub fn get_possible_moves(&self, _position: &str) -> Option<Vec<String>> {
+        None
+    }
 
-        let pos = (r, f);
+    pub fn get_covered_squares(&self, _position: &str) -> Option<Vec<String>> {
+        let rank = _position.chars().next().unwrap();
+        let file = _position.chars().nth(1).unwrap();
+        let r: usize = rank as usize - 48; // row
+        let c: usize = file as usize - 48; // col
 
-        let mut moves: Vec<(usize, usize)> = Vec::new();
+        let mut covered: Vec<String> = Vec::new();
 
-        
-        let piece = self.board[pos.0][pos.1];
-        if let Some(p) = piece {
+        let rook_set: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)]; // down, up, right, left
+        let bishop_set: [(i8, i8); 4] = [(1, 1), (-1, 1), (1, -1), (-1, -1)]; // downright, upright, downleft, upleft
+
+        // check if there is piece at position
+        if let Some(p) = self.board[r][c] {
+            // match role to piece at pos
             match p.role {
                 Role::Pawn => {
+                    println!("pawn at {}", _position);
 
-                    println!("p");
                 },
                 Role::Rook => {
-                    let mut i = 0;
+                    println!("rook at {}", _position);
+                    covered.append(&mut self.sliding_pieces(r, c, rook_set));
 
-                    let nextpos = self.board[pos.0][pos.1 + 1];
-
-
-                    // move right
-                    loop {
-                        
-                    }
-
-
-
-
-
-                    println!("r");
                 },
-                //_ => println!("nothing"),
+                Role::Bishop => {
+                    println!("bishop at {}", _position);
+                    covered.append(&mut self.sliding_pieces(r, c, bishop_set));
+
+                },
+                Role::Queen => {
+                    println!("queen at {}", _position);
+                    covered.append(&mut self.sliding_pieces(r, c, rook_set));
+                    covered.append(&mut self.sliding_pieces(r, c, bishop_set));
+
+                }
+                _ => println!("nothing"),
             }
         }
         else {
             return None;
         }
 
-
-        return Some(moves);
+        return Some(covered);
     }
+
+    pub fn sliding_pieces(&self, r: usize, c: usize, set: [(i8, i8); 4]) -> Vec<String> {
+        let mut covered: Vec<String> = Vec::new();
+
+        for s in set {
+            let mut new_r = r as i8 + s.0;
+            let mut new_c = c as i8 + s.1;
+
+            while (new_r >= 0 && new_r <= 7) && (new_c >= 0 && new_c <= 7) {
+                if let Some(np) = self.board[new_r as usize][new_c as usize] {
+                    println!("something here at {}{}", new_r, new_c);
+                    break;
+                }
+                else {
+                    let mut new_pos: String = new_r.to_string();
+                    new_pos.push_str(&new_c.to_string());
+                    println!("nothing here at {}", new_pos);
+                    covered.push(new_pos);
+                }
+
+                new_r += s.0;
+                new_c += s.1;
+            }
+        }
+
+        return covered;
+    }
+
+
 }
 
 /// Implement print routine for Game.
-/// 
-/// Output example:
-/// |:----------------------:|
-/// | R  Kn B  K  Q  B  Kn R |
-/// | P  P  P  P  P  P  P  P |
-/// | *  *  *  *  *  *  *  * |
-/// | *  *  *  *  *  *  *  * |
-/// | *  *  *  *  *  *  *  * |
-/// | *  *  *  *  *  *  *  * |
-/// | P  P  P  P  P  P  P  P |
-/// | R  Kn B  K  Q  B  Kn R |
-/// |:----------------------:|
 impl fmt::Debug for Game {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, c: &mut fmt::Formatter) -> fmt::Result {
         /* build board representation string */
         let mut output: String = String::new();
 
@@ -174,20 +216,23 @@ impl fmt::Debug for Game {
                         match p.role {
                             Role::Pawn => r = "P",
                             Role::Rook => r = "R",
+                            Role::Knight => r = "N",
+                            Role::Bishop => r = "B",
+                            Role::Queen => r = "Q",
+                            Role::King => r = "K"
                         }
 
                         output.push_str(c);
                         output.push_str(r);
                         output.push_str(" ");
                     },
-
                     None => output.push_str(" . "),
                 }
             }
             output.push_str("\n");
         }
 
-        write!(f, "{}", output)
+        write!(c, "{}", output)
     }
 }
 
@@ -220,10 +265,15 @@ mod tests {
         println!("{:?}", game);
 
 
-        let pos = "53"; // file, rank, index from 1
-        let moves = game.get_possible_moves(pos);
-        if moves.is_none() {
-            println!("none");
+        let pos = "33"; // rank, file, index from 0
+        let moves = game.get_covered_squares(pos);
+        match moves {
+            Some(m) => {
+                for mm in m {
+                    println!("{}", mm);
+                }
+            },
+            None => println!("none here"),
         }
 
         println!();
