@@ -2,8 +2,6 @@ use std::fmt;
 
 
 /* TODO
-- allow oppsite color piece square to be added to covered
-- implement for non sliding pieces
 - add check control in get_covered_squares ?
 - implement is_check method
 
@@ -30,7 +28,7 @@ pub enum Role {
 }
 
  #[derive(Copy, Clone, Debug)]
-struct Piece {
+pub struct Piece {
     color: Color,
     role: Role,
     has_moved: bool,
@@ -82,7 +80,7 @@ impl Game {
                 b[7][2] = Some(Piece::new(Color::White, Role::Bishop));
                 b[7][5] = Some(Piece::new(Color::White, Role::Bishop));
 
-                b[3][3] = Some(Piece::new(Color::Black, Role::Queen));
+                b[0][3] = Some(Piece::new(Color::Black, Role::Queen));
                 b[7][3] = Some(Piece::new(Color::White, Role::Queen));
 
                 b[0][4] = Some(Piece::new(Color::Black, Role::King));
@@ -132,9 +130,14 @@ impl Game {
         // piece movement direction sets
         let rook_set: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)]; // down, up, right, left
         let bishop_set: [(i8, i8); 4] = [(1, 1), (-1, 1), (1, -1), (-1, -1)]; // downright, upright, downleft, upleft
+        
+        let knight_set: [(i8, i8); 8] = [(1, 2), (2, 1), (2, -1), (1, -2), (-1, -2), (-2, -1), (-2, 1), (-1, 2)];
+        let king_set: [(i8, i8); 8] = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)]; // rook_set + bishop_set (needed because non_sliding_pieces takes array of length 8 as argument)
 
         // check if there is piece at position
         if let Some(p) = self.board[r][c] {
+            let color = p.color;
+
             // match role to piece at position
             match p.role {
                 Role::Pawn => {
@@ -143,7 +146,31 @@ impl Game {
                 },
                 Role::Rook => {
                     println!("rook at {}", _position);
+                    
+                    /*for s in rook_set {
+                        let mut new_r = r as i8 + s.0;
+                        let mut new_c = c as i8 + s.1;
+
+                        while (new_r >= 0 && new_r <= 7) && (new_c >= 0 && new_c <= 7) {
+                            let next = self.board[new_r as usize][new_c as usize];
+                            
+                            match self.next_square(new_r, new_c, color, next) {
+                                Some(new_pos) => covered.push(new_pos),
+                                None => break,
+                            }
+
+                            new_r += s.0;
+                            new_c += s.1;
+                        }
+
+                    }*/
+                    
                     covered.append(&mut self.sliding_pieces(r, c, rook_set));
+
+                },
+                Role::Knight => {
+                    println!("knight at {}", _position);
+                    covered.append(&mut self.non_sliding_pieces(r, c, knight_set));
 
                 },
                 Role::Bishop => {
@@ -158,7 +185,10 @@ impl Game {
                     covered.append(&mut self.sliding_pieces(r, c, bishop_set));
 
                 }
-                _ => println!("nothing"),
+                Role::King => {
+                    println!("king at {}", _position);
+                    covered.append(&mut self.non_sliding_pieces(r, c, king_set));
+                }
             }
         }
         else {
@@ -167,6 +197,28 @@ impl Game {
 
         return Some(covered);
     }
+
+    /*pub fn next_square(&self, r: i8, c: i8, color: Color, next: Option<Piece>) -> Option<String> {
+        match next {
+            Some(piece) => {                        
+                // check if color matches
+                if piece.color != color {
+                    let mut new_pos: String = r.to_string();
+                    new_pos.push_str(&c.to_string());
+                    println!("capture possible at {}!", new_pos);
+                    return Some(new_pos);
+                }
+
+                return None;
+            }
+            None => {
+                let mut new_pos: String = r.to_string();
+                new_pos.push_str(&c.to_string());
+                println!("move possible to {}", new_pos);
+                return Some(new_pos);
+            }
+        }
+    }*/
 
     pub fn sliding_pieces(&self, r: usize, c: usize, set: [(i8, i8); 4]) -> Vec<String> {
         let mut covered: Vec<String> = Vec::new();
@@ -189,7 +241,43 @@ impl Game {
                         }
 
                         break;
+                    },
+                    None => {
+                        let mut new_pos: String = new_r.to_string();
+                        new_pos.push_str(&new_c.to_string());
+                        println!("move possible to {}", new_pos);
+                        covered.push(new_pos);
                     }
+                }
+
+                new_r += s.0;
+                new_c += s.1;
+            }
+        }
+
+        return covered;
+    }
+
+    pub fn non_sliding_pieces(&self, r: usize, c: usize, set: [(i8, i8); 8]) -> Vec<String> {
+        let mut covered: Vec<String> = Vec::new();
+        let color = self.board[r][c].unwrap().color;
+
+        for s in set {
+            let mut new_r = r as i8 + s.0;
+            let mut new_c = c as i8 + s.1;
+
+            if (new_r >= 0 && new_r <= 7) && (new_c >= 0 && new_c <= 7) {
+                let next = self.board[new_r as usize][new_c as usize];
+                match next {
+                    Some(piece) => {                        
+                        // check if color matches
+                        if piece.color != color {
+                            let mut new_pos: String = new_r.to_string();
+                            new_pos.push_str(&new_c.to_string());
+                            println!("capture possible at {}!", new_pos);
+                            covered.push(new_pos);
+                        }
+                    },
                     None => {
                         let mut new_pos: String = new_r.to_string();
                         new_pos.push_str(&new_c.to_string());
@@ -280,7 +368,7 @@ mod tests {
         println!("{:?}", game);
 
 
-        let pos = "33"; // rank, file, index from 0
+        let pos = "01"; // rank, file, index from 0
         let moves = game.get_covered_squares(pos);
         /*
         match moves {
