@@ -77,8 +77,8 @@ impl Game {
                 b[7][4] = Some(Piece::new(Color::White, Role::King));
                 
                 // test pieces
-                //b[1][4] = Some(Piece::new(Color::Black, Role::Rook)); // test piece
-                //b[5][5] = Some(Piece::new(Color::Black, Role::Pawn)); // test piece
+                //b[1][4] = Some(Piece::new(Color::Black, Role::Rook));
+                //b[5][5] = Some(Piece::new(Color::Black, Role::Pawn));
 
                 b
             }
@@ -606,8 +606,7 @@ mod tests {
 
 
 /* TODO
-- get_possible_moves
-- move method that makes move without checking legality ??
+- add position read method
 
 
 */
