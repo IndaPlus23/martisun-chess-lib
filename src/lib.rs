@@ -35,18 +35,15 @@ impl Piece {
 }
 
 pub struct Game {
-    /* save board, active colour, ... */
     state: GameState,
     turn: Color,
     board: [[Option<Piece>; 8]; 8], // [row][col] or [rank][file], origin at top left
-    //...
 }
 
 impl Game {
     /// Initialises board
     pub fn new() -> Game {
         Game {
-            /* initialise board, set active colour to white, ... */
             state: GameState::InProgress,
             turn: Color::White,
             board: {
@@ -77,45 +74,42 @@ impl Game {
                 b[7][4] = Some(Piece::new(Color::White, Role::King));
                 
                 // test pieces
-                //b[1][4] = Some(Piece::new(Color::Black, Role::Rook));
-                //b[5][5] = Some(Piece::new(Color::Black, Role::Pawn));
+                // b[1][4] = Some(Piece::new(Color::Black, Role::Rook));
+                // b[5][5] = Some(Piece::new(Color::Black, Role::Pawn));
 
                 b
             }
         }
     }
 
-    /// If the current game state is `InProgress` and the move is legal, 
-    /// move a piece and return the resulting state of the game.
+    /// Attempts to move a piece if legal and returns the resulting state of the game.
     pub fn make_move(&mut self, _from: &str, _to: &str) -> Option<GameState> {
-        let frank = _from.chars().next().unwrap();
-        let ffile = _from.chars().nth(1).unwrap();
-        let fr: usize = frank as usize - 48; // row
-        let fc: usize = ffile as usize - 48; // col
+        // convert positions to int
+        let from = self.pos_toint(_from);
+        let to = self.pos_toint(_to);
 
-        let trank = _to.chars().next().unwrap();
-        let tfile = _to.chars().nth(1).unwrap();
-        let tr: usize = trank as usize - 48; // row
-        let tc: usize = tfile as usize - 48; // col
+        let fr = from.0; // from, row
+        let fc = from.1; // from, col
+        let tr = to.0; // to, row
+        let tc = to.1; // to, col
 
         // check if piece exists on square
         if let Some(mut piece) = self.board[fr][fc] {
-            // check if piece is correct color (offload to gui?)
+            // check if piece is correct color
             if piece.color == self.turn {
-                let covered: Vec<String> = self.get_covered_squares(_from).unwrap();
+                let covered: Vec<String> = self.get_possible_moves(_from).unwrap();
 
                 // check move pseudolegality
                 if covered.contains(&_to.to_string()) {
                     println!("try move from {} to {}", _from, _to);
 
-                    piece.has_moved = true;
-
                     // move piece
+                    piece.has_moved = true;
                     let temp_piece = self.board[tr][tc]; // store piece thats on _to in case there is one
                     self.board[tr][tc] = Some(piece);
                     self.board[fr][fc] = None;
 
-                    // check move legality
+                    // check move legality by checking if move puts player in check
                     if self.is_check(piece.color) {
                         // move illegal
                         println!("move illegal");
@@ -131,7 +125,7 @@ impl Game {
                         // move legal
                         println!("move legal");
 
-                        // check if other player under check
+                        // check if move puts other player under check
                         let ischeck: bool;
 
                         // update turn and check for check
@@ -150,6 +144,7 @@ impl Game {
                             self.state = GameState::Check;
                             println!("check!!");
 
+                            // check for mate
                             let ismate = self.is_mate(self.turn);
                             if ismate {
                                 self.state = GameState::GameOver;
@@ -177,25 +172,25 @@ impl Game {
         }
     }
 
+    /// Checks if a certain color is under mate by going though every piece
+    /// and checking if any legal moves exist.
     pub fn is_mate(&mut self, color: Color) -> bool {
-        let mut mate: bool;
-
         // loop thru pieces
         let mut pos: String = String::new();
         for r in 0..7 {
             for c in 0..7 {
-                if let Some(mut piece) = self.board[r][c] {
+                if let Some(piece) = self.board[r][c] {
                     if piece.color == color {
                         pos.clear();
                         pos.push_str(&r.to_string());
                         pos.push_str(&c.to_string());
 
-                        let covered = self.get_covered_squares(&pos).unwrap();
+                        let covered = self.get_possible_moves(&pos).unwrap();
                         for cov in covered {
-                            let trank = cov.chars().next().unwrap();
-                            let tfile = cov.chars().nth(1).unwrap();
-                            let tr: usize = trank as usize - 48; // row
-                            let tc: usize = tfile as usize - 48; // col
+                            let to = self.pos_toint(&cov);
+                            let tr = to.0;
+                            let tc = to.1;
+                            
                             // move piece
                             let temp_piece = self.board[tr][tc]; // store piece thats on _to in case there is one
                             self.board[tr][tc] = Some(piece);
@@ -234,43 +229,28 @@ impl Game {
         self.state
     }
     
-    /// If a piece is standing on the given tile, return all possible 
-    /// new positions of that piece. Don't forget to the rules for check. 
-    /// 
+    /// If a piece is standing on the given tile, return all possible pseudolegal moves of that piece.
+    /// Note: This method only returns pseudolegal moves. Check/mate control is done in the make_move method.
+    ///
     /// (optional) Implement en passant and castling.
     pub fn get_possible_moves(&self, _position: &str) -> Option<Vec<String>> {
-        let t = self.is_check(Color::White);
-        if t {
-            println!("check!");
-        }
-        else {
-            println!("not check");
-        }
-        
-        None
-    }
+        // convert position to int
+        let pos = self.pos_toint(_position);
+        let r = pos.0;
+        let c = pos.1;
 
-    pub fn get_covered_squares(&self, _position: &str) -> Option<Vec<String>> {
-        let rank = _position.chars().next().unwrap();
-        let file = _position.chars().nth(1).unwrap();
-        let r: usize = rank as usize - 48; // row
-        let c: usize = file as usize - 48; // col
-
+        // vector over all covered pieces, aka pseudolegal moves
         let mut covered: Vec<String> = Vec::new();
 
         // piece movement directions
         let pawn_set: [(i8, i8); 3] = [(1, 0), (1, 1), (1, -1)]; // valid for black pawns, negative values for white pawns
-
-        let rook_set: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)]; // down, up, right, left
-        let bishop_set: [(i8, i8); 4] = [(1, 1), (-1, 1), (1, -1), (-1, -1)]; // downright, upright, downleft, upleft
-        
+        let rook_set: [(i8, i8); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+        let bishop_set: [(i8, i8); 4] = [(1, 1), (-1, 1), (1, -1), (-1, -1)];
         let knight_set: [(i8, i8); 8] = [(1, 2), (2, 1), (2, -1), (1, -2), (-1, -2), (-2, -1), (-2, 1), (-1, 2)];
-        let king_set: [(i8, i8); 8] = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)]; // rook_set + bishop_set (needed because non_sliding_pieces takes array of length 8 as argument)
+        let king_set: [(i8, i8); 8] = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1)];
 
         // check if there is piece at position
         if let Some(p) = self.board[r][c] {
-            let color = p.color;
-
             // match role to piece at position
             match p.role {
                 Role::Pawn => {
@@ -308,6 +288,7 @@ impl Game {
         return Some(covered);
     }
 
+    /// Gets all possible pseudolegal moves for sliding pieces, ie rooks and bishops and queens.
     pub fn sliding_pieces(&self, r: usize, c: usize, set: [(i8, i8); 4]) -> Vec<String> {
         let mut covered: Vec<String> = Vec::new();
         let color = self.board[r][c].unwrap().color;
@@ -346,6 +327,7 @@ impl Game {
         return covered;
     }
 
+    /// Gets all possible pseudolegal moves from non sliding pieces, ie knights and kings.
     pub fn non_sliding_pieces(&self, r: usize, c: usize, set: [(i8, i8); 8]) -> Vec<String> {
         let mut covered: Vec<String> = Vec::new();
         let color = self.board[r][c].unwrap().color;
@@ -379,6 +361,7 @@ impl Game {
         return covered;
     }
 
+    /// Gets all possible pseudolegal moves from pawns.
     pub fn pawn_pieces(&self, r: usize, c: usize, set: [(i8, i8); 3]) -> Vec<String> {
         let mut covered: Vec<String> = Vec::new();
         let current_piece = self.board[r][c].unwrap();
@@ -400,7 +383,7 @@ impl Game {
                 if i == 0 {
                     let mut next = self.board[new_r as usize][new_c as usize];
                     match next {
-                        Some(piece) => {},
+                        Some(_piece) => {},
                         None => {
                             let mut new_pos: String = new_r.to_string();
                             new_pos.push_str(&new_c.to_string());
@@ -414,7 +397,7 @@ impl Game {
                                 next = self.board[new_r as usize][new_c as usize];
 
                                 match next {
-                                    Some(piece) => {},
+                                    Some(_piece) => {},
                                     None => {
                                         let mut new_pos: String = new_r.to_string();
                                         new_pos.push_str(&new_c.to_string());
@@ -422,8 +405,6 @@ impl Game {
                                         covered.push(new_pos);
                                     }
                                 }
-
-                                // check for has_moved in make_move?
                             }
                         }
                     }
@@ -450,9 +431,9 @@ impl Game {
         return covered;
     }
 
-    // checks if a color is under check
+    // Checks if a certain color is under check by looping through opponent pieces
+    /// and checking if player king is within opponent's covered squares.
     pub fn is_check(&self, color: Color) -> bool {
-        // maybe move/offload?
         let opp_color: Color;
         if color == Color::White {
             opp_color = Color::Black;
@@ -483,7 +464,9 @@ impl Game {
                         current_pos.clear();
                         current_pos.push_str(&r.to_string());
                         current_pos.push_str(&c.to_string());
-                        let covered = self.get_covered_squares(&current_pos).unwrap();
+
+                        // checks if king is under attack by opponent piece
+                        let covered = self.get_possible_moves(&current_pos).unwrap();
                         if covered.contains(&king_pos) {
                             return true;
                         }
@@ -493,6 +476,15 @@ impl Game {
         }
 
         return false;
+    }
+
+    pub fn pos_toint(&self, pos: &str) -> (usize, usize) {
+        let rank = pos.chars().next().unwrap();
+        let file = pos.chars().nth(1).unwrap();
+        let r: usize = rank as usize - 48; // row
+        let c: usize = file as usize - 48; // col
+
+        return (r, c);
     }
 }
 
@@ -562,29 +554,14 @@ mod tests {
     #[test]
     fn game_in_progress_after_init() {
         let mut game = Game::new();
-        
-        /*println!("{:?}", game);
-
-        let pos = "64"; // rank, file, index from 0
-        game.make_move(pos, "55");
-
-        println!("{:?}", game);
-
-        game.make_move(pos, "54");
-
-        println!("{:?}", game);
-
-        game.get_covered_squares("54");*/
             
         let stdin = io::stdin();
-        for i in 0..30 {
+        for _i in 0..30 {
             println!("{:?}", game);
 
             let mut from = String::new();
             stdin.read_line(&mut from).expect("error");
             from.pop();
-
-            game.get_covered_squares(&from);
 
             let mut to = String::new();
             stdin.read_line(&mut to).expect("error");
@@ -604,9 +581,8 @@ mod tests {
 }
 
 
-
 /* TODO
-- add position read method
+- add error handling for unwrap() panics?
 
 
 */
