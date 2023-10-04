@@ -18,7 +18,7 @@ pub enum Role {
 }
 
  #[derive(Copy, Clone, Debug)]
-struct Piece {
+pub struct Piece {
     color: Color,
     role: Role,
     has_moved: bool,
@@ -37,7 +37,7 @@ impl Piece {
 pub struct Game {
     state: GameState,
     turn: Color,
-    board: [[Option<Piece>; 8]; 8], // [row][col] or [rank][file], origin at top left
+    pub board: [[Option<Piece>; 8]; 8], // [row][col] or [rank][file], origin at top left
 }
 
 impl Game {
@@ -571,11 +571,7 @@ mod tests {
         }
 
         println!();
-        println!();
-        println!();
-        println!();
 
-        
         assert_eq!(game.get_game_state(), GameState::InProgress);
     }
 }
