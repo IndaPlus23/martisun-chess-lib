@@ -19,9 +19,9 @@ pub enum Role {
 
  #[derive(Copy, Clone, Debug)]
 pub struct Piece {
-    color: Color,
-    role: Role,
-    has_moved: bool,
+    pub color: Color,
+    pub role: Role,
+    pub has_moved: bool,
 }
 
 impl Piece {
@@ -36,7 +36,7 @@ impl Piece {
 
 pub struct Game {
     state: GameState,
-    turn: Color,
+    pub turn: Color,
     pub board: [[Option<Piece>; 8]; 8], // [row][col] or [rank][file], origin at top left
 }
 
